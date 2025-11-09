@@ -1,0 +1,1 @@
+from app.models import User, create_default_users
