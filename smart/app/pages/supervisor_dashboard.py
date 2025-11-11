@@ -170,37 +170,75 @@ def whitelist_table_teachers():
         width="100%",
     )
 
-def navbar():
-    return rx.hstack(
-        # ✅ Right side: Arabic navigation buttons
-        rx.hstack(
-            rx.button("إدارة المستخدمين", variant="ghost"),
-            rx.button("النتائج", variant="ghost"),
-            rx.button("الملفات", variant="ghost"),
-            rx.button("حالة النظام", variant="ghost"),
-            spacing="4",
-        ),
+import reflex as rx
+# Make sure to import your AuthState, e.g.:
+# from your_project.state.auth import AuthState
 
-        # ✅ Left side: App title + Logout
-        rx.hstack(
-            rx.heading("نظام المشرف", size="5", color="blue.600"),
-            rx.button(
+def supervisor_navbar():
+    """
+    A redesigned, responsive supervisor navbar.
+    - Desktop: Shows full links and logout button.
+    - Mobile: Hides links and logout button behind a hamburger menu.
+    """
+
+    # --- Left Side (Brand/Title) ---
+    brand_section = rx.hstack(
+        rx.heading("نظام المشرف", size="5", color="blue.600"),
+        rx.button(
+            "تسجيل الخروج",
+            on_click=AuthState.logout,
+            color_scheme="red",
+            variant="soft",
+            # ✅ CORRECTED: Removed extra {{...}}
+            display={"base": "none", "md": "flex"}
+        ),
+        spacing="4",
+        align="center",
+    )
+
+    # 2. Mobile: A hamburger menu
+    mobile_nav = rx.menu.root(
+        rx.menu.trigger(
+            rx.icon(tag="menu", size=28, cursor="pointer"),
+        ),
+        rx.menu.content(
+            rx.menu.item("إدارة المستخدمين"),
+            rx.menu.item("النتائج"),
+            rx.menu.item("الملفات"),
+            rx.menu.item("حالة النظام"),
+            rx.menu.separator(),
+            rx.menu.item(
                 "تسجيل الخروج",
-                on_click=AuthState.logout,
-                color_scheme="red",
+                on_select=AuthState.logout,
+                color="red.600"
             ),
-            spacing="3",
+            align="end",
         ),
+        # ✅ CORRECTED: Removed extra {{...}}
+        display={"base": "flex", "md": "none"}
+    )
 
+    # --- Main Navbar Container ---
+    return rx.hstack(
+        # Child 1: The Navigation
+        rx.box(
+            mobile_nav,
+        ),
+        
+        # Child 2: The Brand
+        brand_section,
+
+        # --- Main Styling ---
         justify="between",
         align="center",
-        padding="16px",
+        padding_y="12px",
+        padding_x="16px",
         background_color="gray.100",
         border_bottom="1px solid #ddd",
         width="100%",
-        direction="row-reverse",   # 👈 aligns layout right-to-left
+        direction="row-reverse",
         font_family="'Cairo', sans-serif",
-        position="sticky",  # stays at top on scroll
+        position="sticky",
         top="0",
         z_index="1000",
     )
@@ -208,16 +246,11 @@ def navbar():
 
 def supervisor_dashboard():
     return rx.vstack(
-         # ✅ Navbar first
-        navbar(),
+         supervisor_navbar(),  # ✅ navbar at top
+      
         # Header
         rx.hstack(
-            section_title("Supervisor Dashboard"),
-            rx.button(
-                "Logout",
-                on_click=AuthState.logout,
-                color_scheme="red",
-            ),
+            section_title("إدارة المستخدمين"),
             justify="between",
             width="100%",
         ),
