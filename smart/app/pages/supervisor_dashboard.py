@@ -1,196 +1,242 @@
 import reflex as rx
+from app.states.supervisor_state import SupervisorState
 from app.states.auth_state import AuthState
-from app.states.dashboard_state import DashboardState
 
 
-def supervisor_dashboard() -> rx.Component:
-    return rx.el.main(
-        rx.el.div(
-            _header(),
-            rx.el.div(
-                rx.el.div(
-                    _manage_users_card(),
-                    _upload_results_card(),
-                    class_name="grid grid-cols-1 md:grid-cols-2 gap-6 items-start",
-                ),
-                rx.el.div(
-                    _stats_card(),
-                    _teacher_files_card(),
-                    class_name="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mt-6",
-                ),
-                class_name="w-full max-w-6xl",
+def section_title(text: str):
+    return rx.heading(text, size="5", margin_bottom="8px")
+
+
+def users_table(title: str, items, is_teacher: bool = False):
+    cols = ["Username", "Email", "University ID", "Actions"]
+    header = rx.table.row(*[rx.table.column_header_cell(c) for c in cols])
+
+    def render_row(u):
+        return rx.table.row(
+            rx.table.cell(u.username),
+            rx.table.cell(u.email),
+            rx.table.cell(u.university_id),
+            rx.table.cell(
+                rx.button(
+                    "Delete",
+                    color_scheme="red",
+                    size="1",
+                    on_click=SupervisorState.delete_user(u.id),
+                )
             ),
-            class_name="flex flex-col items-center w-full",
-        ),
-        class_name="font-['Inter'] bg-gray-100 min-h-screen p-6",
-        dir="rtl",
-    )
+        )
 
-
-def _header() -> rx.Component:
-    return rx.el.div(
-        rx.el.h1(
-            rx.icon("cloud", class_name="inline-block ml-2"),
-            "سمارت كلاود",
-            class_name="text-2xl font-bold text-gray-800",
-        ),
-        rx.el.button(
-            "رجوع",
-            rx.icon("arrow-right", class_name="mr-2"),
-            on_click=AuthState.logout,
-            class_name="flex items-center bg-white text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-gray-50",
-        ),
-        class_name="flex items-center justify-between w-full max-w-6xl mx-auto mb-8",
-    )
-
-
-def _manage_users_card() -> rx.Component:
-    return rx.el.div(
-        _card_header("إدارة المستخدمين", "users"),
-        rx.el.form(
-            _user_input("حذف طالب (بالرقم الجامعي)", "أدخل الرقم الجامعي"),
-            rx.el.button(
-                "حذف",
-                class_name="w-full bg-red-500 text-white font-semibold py-2 rounded-md hover:bg-red-600",
-            ),
-            on_submit=lambda data: DashboardState.delete_user(data, "student"),
-            class_name="space-y-4 border-b pb-4",
-        ),
-        rx.el.form(
-            _user_input("حذف استاذ (باسم المستخدم)", "أدخل اسم المستخدم"),
-            rx.el.button(
-                "حذف",
-                class_name="w-full bg-red-500 text-white font-semibold py-2 rounded-md hover:bg-red-600",
-            ),
-            on_submit=lambda data: DashboardState.delete_user(data, "teacher"),
-            class_name="space-y-4 pt-4",
-        ),
-        class_name="bg-white p-6 rounded-2xl shadow-sm",
-    )
-
-
-def _user_input(label: str, placeholder: str) -> rx.Component:
-    return rx.el.div(
-        rx.el.label(label, class_name="text-sm font-medium text-gray-700"),
-        rx.el.input(
-            placeholder=placeholder,
-            class_name="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm shadow-sm",
-        ),
-    )
-
-
-def _upload_results_card() -> rx.Component:
-    return rx.el.div(
-        _card_header("رفع النتائج", "upload"),
-        rx.el.label(
-            "السنة الأكاديمية", class_name="text-sm font-medium text-gray-700 mb-1"
-        ),
-        rx.el.select(
-            rx.foreach(
-                DashboardState.academic_years,
-                lambda year: rx.el.option(year, value=year),
-            ),
-            class_name="w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 mb-4",
-        ),
-        rx.el.label(
-            "رفع ملف النتائج", class_name="text-sm font-medium text-gray-700 mb-1"
-        ),
-        rx.upload.root(
-            rx.el.div(
-                rx.icon("file-archive", class_name="text-gray-400 h-10 w-10"),
-                rx.el.p("اسحب الملف هنا أو اضغط للاختيار", class_name="text-gray-500"),
-                rx.el.p("PDF أو Excel", class_name="text-xs text-gray-400"),
-                class_name="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg text-center h-40",
-            ),
-            class_name="w-full",
-        ),
-        rx.el.button(
-            "رفع النتائج",
-            rx.icon("upload", class_name="mr-2"),
-            class_name="mt-4 w-full flex items-center justify-center bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700",
-        ),
-        class_name="bg-white p-6 rounded-2xl shadow-sm",
-    )
-
-
-def _stats_card() -> rx.Component:
-    return rx.el.div(
-        _card_header("التقارير والإحصاءات", "bar-chart-2"),
-        rx.el.div(
-            _stat_item(
-                "اجمالي الأساتذة", "78", "bg-green-100 text-green-700", "user-check"
-            ),
-            _stat_item("اجمالي الطلاب", "1,245", "bg-blue-100 text-blue-700", "users"),
-            _stat_item(
-                "استخدام التخزين السحابي",
-                "65% مستخدم (13GB من 20GB)",
-                "bg-yellow-100 text-yellow-700",
-                "database",
-            ),
-            _stat_item(
-                "الملفات المرفوعة", "2,310", "bg-purple-100 text-purple-700", "file"
-            ),
-            class_name="grid grid-cols-2 gap-4",
-        ),
-        class_name="bg-white p-6 rounded-2xl shadow-sm",
-    )
-
-
-def _stat_item(label, value, color_class, icon_name) -> rx.Component:
-    return rx.el.div(
-        rx.el.div(
-            rx.el.div(
-                rx.icon(icon_name, class_name="h-6 w-6"),
-                class_name=f"p-2 rounded-lg {color_class}",
-            ),
-            rx.el.p(label, class_name="text-sm font-medium text-gray-500"),
-            class_name="flex items-center space-x-2 rtl:space-x-reverse",
-        ),
-        rx.el.p(value, class_name="text-xl font-bold text-gray-800 mt-1"),
-        class_name="bg-gray-50 p-4 rounded-lg",
-    )
-
-
-def _teacher_files_card() -> rx.Component:
-    return rx.el.div(
-        _card_header("استعراض ملفات الأساتذة", "file-text"),
-        rx.el.div(
-            rx.el.table(
-                rx.el.thead(
-                    rx.el.tr(
-                        rx.el.th("اسم الملف", class_name="py-2 px-4 text-right"),
-                        rx.el.th("السنة", class_name="py-2 px-4 text-right"),
-                        rx.el.th("النوع", class_name="py-2 px-4 text-right"),
-                    )
-                ),
-                rx.el.tbody(
-                    rx.foreach(
-                        DashboardState.teacher_files,
-                        lambda file: rx.el.tr(
-                            rx.el.td(file["name"], class_name="py-2 px-4"),
-                            rx.el.td(file["year"], class_name="py-2 px-4"),
-                            rx.el.td(
-                                rx.el.span(
-                                    file["type"],
-                                    class_name="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-700",
-                                ),
-                                class_name="py-2 px-4",
-                            ),
-                            class_name="border-b",
+    return rx.card(
+        rx.vstack(
+            section_title(title),
+            # ✅ Scrollable table container
+            rx.box(
+                rx.table.root(
+                    rx.table.header(header),
+                    rx.cond(
+                        items.length() > 0,
+                        rx.table.body(rx.foreach(items, render_row)),
+                        rx.table.body(
+                            rx.table.row(
+                                rx.table.cell("No data", col_span=len(cols))
+                            )
                         ),
-                    )
+                    ),
+                    variant="surface",
+                    size="1",
                 ),
-                class_name="w-full text-sm",
+                overflow_x="auto",
+                width="100%",
+                max_width="100%",
             ),
-            class_name="overflow-x-auto",
+            spacing="1",
+            align="start",
+            width="100%",
         ),
-        class_name="bg-white p-6 rounded-2xl shadow-sm",
+        size="1",
+        width="100%",
     )
 
 
-def _card_header(title: str, icon_name: str) -> rx.Component:
-    return rx.el.div(
-        rx.icon(icon_name, class_name="text-blue-600"),
-        rx.el.h2(title, class_name="font-bold text-lg text-gray-800"),
-        class_name="flex items-center space-x-3 rtl:space-x-reverse mb-4",
+
+def whitelist_form_students():
+    return rx.card(
+        rx.vstack(
+            section_title("Whitelist: Students"),
+            rx.text("Enter student numbers (comma-separated). Must be 6 digits."),
+            rx.hstack(
+                rx.input(
+                    placeholder="e.g. 123456, 234567, 345678",
+                    value=SupervisorState.new_student_numbers,
+                    on_change=SupervisorState.set_new_student_numbers,
+                    width="100%",
+                ),
+                rx.button(
+                    "Add",
+                    on_click=SupervisorState.add_allowed_students,
+                    color_scheme="green",
+                ),
+                spacing="3",
+                width="100%",
+            ),
+            whitelist_table_students(),
+            spacing="3",
+            align="start",
+            width="100%",
+        ),
+        size="3",
+        width="100%",
+    )
+
+
+def whitelist_table_students():
+    cols = ["Student number", "Registered", "Added date"]
+    header = rx.table.row(*[rx.table.column_header_cell(c) for c in cols])
+    
+    def render_row(s):
+        return rx.table.row(
+            rx.table.cell(s.student_number),
+            rx.table.cell(rx.cond(s.is_registered, "Yes", "No")),
+            rx.table.cell(s.added_date),
+        )
+    
+    return rx.table.root(
+        rx.table.header(header),
+        rx.cond(
+            SupervisorState.allowed_students.length() > 0,
+            rx.table.body(rx.foreach(SupervisorState.allowed_students, render_row)),
+            rx.table.body(
+                rx.table.row(rx.table.cell("No students in whitelist", col_span=len(cols)))
+            ),
+        ),
+        variant="surface",
+        size="3",
+        width="100%",
+    )
+
+
+def whitelist_form_teachers():
+    return rx.card(
+        rx.vstack(
+            section_title("Whitelist: Teachers"),
+            rx.text("Enter teacher emails (comma-separated). Must end with @nilevalley.edu.sd"),
+            rx.hstack(
+                rx.input(
+                    placeholder="e.g. a@nilevalley.edu.sd, b@nilevalley.edu.sd",
+                    value=SupervisorState.new_teacher_emails,
+                    on_change=SupervisorState.set_new_teacher_emails,
+                    width="100%",
+                ),
+                rx.button(
+                    "Add",
+                    on_click=SupervisorState.add_allowed_teachers,
+                    color_scheme="green",
+                ),
+                spacing="3",
+                width="100%",
+            ),
+            whitelist_table_teachers(),
+            spacing="3",
+            align="start",
+            width="100%",
+        ),
+        size="3",
+        width="100%",
+    )
+
+
+def whitelist_table_teachers():
+    cols = ["Email", "Registered", "Added date"]
+    header = rx.table.row(*[rx.table.column_header_cell(c) for c in cols])
+    
+    def render_row(t):
+        return rx.table.row(
+            rx.table.cell(t.university_email),
+            rx.table.cell(rx.cond(t.is_registered, "Yes", "No")),
+            rx.table.cell(t.added_date),
+        )
+    
+    return rx.table.root(
+        rx.table.header(header),
+        rx.cond(
+            SupervisorState.allowed_teachers.length() > 0,
+            rx.table.body(rx.foreach(SupervisorState.allowed_teachers, render_row)),
+            rx.table.body(
+                rx.table.row(rx.table.cell("No teachers in whitelist", col_span=len(cols)))
+            ),
+        ),
+        variant="surface",
+        size="3",
+        width="100%",
+    )
+
+def navbar():
+    return rx.hstack(
+        # ✅ Right side: Arabic navigation buttons
+        rx.hstack(
+            rx.button("إدارة المستخدمين", variant="ghost"),
+            rx.button("النتائج", variant="ghost"),
+            rx.button("الملفات", variant="ghost"),
+            rx.button("حالة النظام", variant="ghost"),
+            spacing="4",
+        ),
+
+        # ✅ Left side: App title + Logout
+        rx.hstack(
+            rx.heading("نظام المشرف", size="5", color="blue.600"),
+            rx.button(
+                "تسجيل الخروج",
+                on_click=AuthState.logout,
+                color_scheme="red",
+            ),
+            spacing="3",
+        ),
+
+        justify="between",
+        align="center",
+        padding="16px",
+        background_color="gray.100",
+        border_bottom="1px solid #ddd",
+        width="100%",
+        direction="row-reverse",   # 👈 aligns layout right-to-left
+        font_family="'Cairo', sans-serif",
+        position="sticky",  # stays at top on scroll
+        top="0",
+        z_index="1000",
+    )
+
+
+def supervisor_dashboard():
+    return rx.vstack(
+         # ✅ Navbar first
+        navbar(),
+        # Header
+        rx.hstack(
+            section_title("Supervisor Dashboard"),
+            rx.button(
+                "Logout",
+                on_click=AuthState.logout,
+                color_scheme="red",
+            ),
+            justify="between",
+            width="100%",
+        ),
+        
+        # User management section
+        rx.button(
+            "Load All Users",
+            on_click=SupervisorState.load_all_users,
+            color_scheme="blue",
+        ),
+        users_table("Students", SupervisorState.all_students),
+        users_table("Teachers", SupervisorState.all_teachers, is_teacher=True),
+        
+        # Whitelist sections
+        whitelist_form_students(),
+        whitelist_form_teachers(),
+        
+        spacing="4",
+        align="start",
+        width="100%",
+        padding="20px",
     )

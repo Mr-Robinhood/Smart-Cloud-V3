@@ -34,4 +34,3 @@ app.add_page(
 
 # Create default admin user on startup
 create_default_users()
-

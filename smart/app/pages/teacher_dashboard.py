@@ -15,7 +15,7 @@ def teacher_dashboard() -> rx.Component:
                 ),
                 _upload_card(
                     title="رفع فروض منزلية (H.W)",
-                    icon="file-edit",
+                    icon="file-text",
                     file_type="homework",
                 ),
                 class_name="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mb-8",

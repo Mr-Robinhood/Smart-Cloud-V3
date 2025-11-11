@@ -15,8 +15,11 @@ class User(rx.Model, table=True):
     full_name: Optional[str] = None
     university_id: Optional[str] = None
     
-    # NEW: Add this relationship line
+    # Relationships
     uploaded_files: List["UploadedFile"] = Relationship(back_populates="uploaded_by")
+    allowed_students_added: List["AllowedStudent"] = Relationship()
+    allowed_teachers_added: List["AllowedTeacher"] = Relationship()
+    semester_results_uploaded: List["SemesterResult"] = Relationship()
     
     @staticmethod
     def hash_password(password: str) -> str:
@@ -28,22 +31,51 @@ class User(rx.Model, table=True):
         return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
 
 
-# NEW: Add this entire class
 class UploadedFile(rx.Model, table=True):
     """Model for storing uploaded files."""
     
-    filename: str  # Original filename (e.g., "lecture1.pdf")
-    stored_filename: str  # Unique filename on server (e.g., "20241108_143022_lecture_lecture1.pdf")
-    file_type: str  # "lecture", "homework", or "result"
-    file_description: Optional[str] = None  # اسم الملف/الوصف from form
-    semester: str  # الفصل الدراسي (e.g., "الفصل السابع")
-    uploaded_by_id: int = Field(foreign_key="user.id")  # Which teacher uploaded it
-    upload_date: datetime = Field(default_factory=datetime.now)  # When it was uploaded
-    file_size: Optional[int] = None  # Size in bytes
-    file_path: str  # Full path to file (e.g., "uploaded_files/20241108_143022_lecture_lecture1.pdf")
+    filename: str
+    stored_filename: str
+    file_type: str
+    file_description: Optional[str] = None
+    semester: str
+    uploaded_by_id: int = Field(foreign_key="user.id")
+    upload_date: datetime = Field(default_factory=datetime.now)
+    file_size: Optional[int] = None
+    file_path: str
     
-    # Relationship - connects to User model
     uploaded_by: Optional["User"] = Relationship(back_populates="uploaded_files")
+
+
+class AllowedStudent(rx.Model, table=True):
+    """Whitelist of student numbers allowed to register."""
+    
+    student_number: str = Field(unique=True, index=True)  # 6 digits
+    is_registered: bool = False  # Has student created account?
+    added_by_id: int = Field(foreign_key="user.id")  # Which supervisor added it
+    added_date: datetime = Field(default_factory=datetime.now)
+
+
+class AllowedTeacher(rx.Model, table=True):
+    """Whitelist of teacher emails allowed to register."""
+    
+    university_email: str = Field(unique=True, index=True)  # Must end with @nilevalley.edu.sd
+    is_registered: bool = False  # Has teacher created account?
+    added_by_id: int = Field(foreign_key="user.id")  # Which supervisor added it
+    added_date: datetime = Field(default_factory=datetime.now)
+
+
+class SemesterResult(rx.Model, table=True):
+    """Semester results files uploaded by supervisor."""
+    
+    semester: str  # الفصل الدراسي
+    filename: str  # Original filename
+    stored_filename: str  # Unique filename on server
+    file_path: str  # Full path to file
+    file_size: Optional[int] = None
+    uploaded_by_id: int = Field(foreign_key="user.id")  # Supervisor who uploaded
+    upload_date: datetime = Field(default_factory=datetime.now)
+    description: Optional[str] = None  # Optional description
 
 
 def create_default_users():

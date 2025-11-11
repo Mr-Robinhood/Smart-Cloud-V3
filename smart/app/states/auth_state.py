@@ -1,7 +1,7 @@
 import reflex as rx
 from typing import Literal
 from sqlmodel import select
-from app.models import User
+from app.models import User, AllowedStudent, AllowedTeacher
 
 
 class AuthState(rx.State):
@@ -113,6 +113,11 @@ class AuthState(rx.State):
             yield rx.toast.error("Please fill in all required fields")
             return
         
+        # NEW: Validate student number format (6 digits)
+        if not university_id.isdigit() or len(university_id) != 6:
+            yield rx.toast.error("رقم الطالب يجب أن يكون 6 أرقام")
+            return
+        
         if password != confirm_password:
             yield rx.toast.error("Passwords do not match")
             return
@@ -123,6 +128,19 @@ class AuthState(rx.State):
         
         # Create user in database
         with rx.session() as session:
+            # NEW: Check if student number is in whitelist
+            allowed = session.exec(
+                select(AllowedStudent).where(AllowedStudent.student_number == university_id)
+            ).first()
+            
+            if not allowed:
+                yield rx.toast.error("رقم الطالب غير مسموح به. الرجاء التواصل مع المشرف")
+                return
+            
+            if allowed.is_registered:
+                yield rx.toast.error("هذا الرقم مسجل مسبقاً")
+                return
+            
             # Check if username already exists
             existing_user = session.exec(
                 select(User).where(User.username == username)
@@ -152,6 +170,10 @@ class AuthState(rx.State):
             )
             
             session.add(new_user)
+            
+            # NEW: Mark student number as registered
+            allowed.is_registered = True
+            
             session.commit()
             
             yield rx.toast.success("Student account created successfully!")
