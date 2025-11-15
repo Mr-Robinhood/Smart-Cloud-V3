@@ -14,6 +14,7 @@ class User(rx.Model, table=True):
     role: str  # Can be "student", "teacher", or "supervisor"
     full_name: Optional[str] = None
     university_id: Optional[str] = None
+    semester: Optional[str] = None  # NEW: Add this line for student's semester
     
     # Relationships
     uploaded_files: List["UploadedFile"] = Relationship(back_populates="uploaded_by")

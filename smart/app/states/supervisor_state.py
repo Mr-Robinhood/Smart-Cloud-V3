@@ -124,6 +124,39 @@ class SupervisorState(rx.State):
                     yield rx.toast.error("لا يمكن حذف المشرف")
                     return
                 
+                # Delete all files uploaded by this user (if teacher)
+                if user.role == "teacher":
+                    files = session.exec(
+                        select(UploadedFile).where(UploadedFile.uploaded_by_id == user_id)
+                    ).all()
+                    
+                    for file in files:
+                        # Delete physical file
+                        if os.path.exists(file.file_path):
+                            try:
+                                os.remove(file.file_path)
+                            except Exception:
+                                pass  # Ignore if file doesn't exist
+                        # Delete from database
+                        session.delete(file)
+                
+                # If student, unmark their student number as registered
+                if user.role == "student" and user.university_id:
+                    allowed_student = session.exec(
+                        select(AllowedStudent).where(AllowedStudent.student_number == user.university_id)
+                    ).first()
+                    if allowed_student:
+                        allowed_student.is_registered = False
+                
+                # If teacher, unmark their email as registered
+                if user.role == "teacher":
+                    allowed_teacher = session.exec(
+                        select(AllowedTeacher).where(AllowedTeacher.university_email == user.email)
+                    ).first()
+                    if allowed_teacher:
+                        allowed_teacher.is_registered = False
+                
+                # Delete the user
                 session.delete(user)
                 session.commit()
                 yield rx.toast.success(f"تم حذف {user.username} بنجاح")
@@ -287,3 +320,95 @@ class SupervisorState(rx.State):
                 session.delete(file)
                 session.commit()
                 yield rx.toast.success("تم حذف الملف بنجاح")
+    
+    # ========== Semester Results Upload ==========
+    @rx.event
+    async def upload_semester_result(self, files: list[rx.UploadFile]):
+        """Handle semester result file upload."""
+        from app.states.auth_state import AuthState
+        
+        if not files:
+            yield rx.toast.error("الرجاء اختيار ملف")
+            return
+        
+        if not self.result_description:
+            yield rx.toast.error("الرجاء إدخال وصف للنتيجة")
+            return
+        
+        # Get current supervisor
+        auth_state = await self.get_state(AuthState)
+        
+        for file in files:
+            try:
+                # Create uploads directory
+                upload_dir = "assets/uploaded_files/results"
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                # Generate unique filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                original_filename = file.filename
+                file_extension = os.path.splitext(original_filename)[1]
+                stored_filename = f"{timestamp}_result_{original_filename}"
+                file_path = os.path.join(upload_dir, stored_filename)
+                
+                # Save file
+                file_data = await file.read()
+                with open(file_path, "wb") as f:
+                    f.write(file_data)
+                
+                # Save to database
+                with rx.session() as session:
+                    supervisor = session.exec(
+                        select(User).where(User.username == auth_state.current_username)
+                    ).first()
+                    
+                    if not supervisor:
+                        yield rx.toast.error("خطأ في المصادقة")
+                        return
+                    
+                    new_result = SemesterResult(
+                        semester=self.result_semester,
+                        filename=original_filename,
+                        stored_filename=stored_filename,
+                        file_path=file_path,
+                        file_size=len(file_data),
+                        uploaded_by_id=supervisor.id,
+                        description=self.result_description,
+                    )
+                    
+                    session.add(new_result)
+                    session.commit()
+                
+                yield rx.toast.success(f"تم رفع النتيجة بنجاح")
+                self.result_description = ""
+                
+            except Exception as e:
+                yield rx.toast.error(f"خطأ في رفع الملف: {str(e)}")
+    
+    # ========== Load Results ==========
+    @rx.event
+    def load_semester_results(self):
+        """Load all semester results."""
+        # This will be implemented in the dashboard UI
+        pass
+    
+    # ========== Dashboard Stats ==========
+    @rx.var
+    def total_students(self) -> int:
+        """Get total number of students."""
+        return len(self.all_students)
+    
+    @rx.var
+    def total_teachers(self) -> int:
+        """Get total number of teachers."""
+        return len(self.all_teachers)
+    
+    @rx.var
+    def total_allowed_students(self) -> int:
+        """Get total allowed students in whitelist."""
+        return len(self.allowed_students)
+    
+    @rx.var
+    def total_allowed_teachers(self) -> int:
+        """Get total allowed teachers in whitelist."""
+        return len(self.allowed_teachers)

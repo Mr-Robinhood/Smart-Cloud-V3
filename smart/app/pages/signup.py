@@ -39,12 +39,34 @@ def signup() -> rx.Component:
                         rx.el.div(
                             _form_input("full_name", "الاسم الكامل", "text"),
                             _form_input("username", "اسم المستخدم", "text"),
-                            _form_input("university_id", "الرقم الجامعي", "text"),
+                            _form_input("university_id", "الرقم الجامعي (6 أرقام)", "text"),
                             _form_input("email", "البريد الإلكتروني", "email"),
-                            _form_input("password", "كلمة المرور", "password"),
-                            _form_input(
-                                "confirm_password", "تأكيد كلمة المرور", "password"
+                            
+                            # NEW: Semester Selection
+                            rx.el.div(
+                                rx.el.label("الفصل الدراسي", class_name="text-sm font-medium text-gray-700"),
+                                rx.select(
+                                    [
+                                        "الفصل الأول",
+                                        "الفصل الثاني",
+                                        "الفصل الثالث",
+                                        "الفصل الرابع",
+                                        "الفصل الخامس",
+                                        "الفصل السادس",
+                                        "الفصل السابع",
+                                        "الفصل الثامن",
+                                        "الفصل التاسع",
+                                        "الفصل العاشر",
+                                    ],
+                                    placeholder="اختر الفصل الدراسي",
+                                    name="semester",
+                                    required=True,
+                                    class_name="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm",
+                                ),
                             ),
+                            
+                            _form_input("password", "كلمة المرور", "password"),
+                            _form_input("confirm_password", "تأكيد كلمة المرور", "password"),
                             class_name="space-y-4",
                         ),
                         rx.el.button(
@@ -64,11 +86,9 @@ def signup() -> rx.Component:
                             _form_input("full_name", "الاسم الكامل", "text"),
                             _form_input("username", "اسم المستخدم", "text"),
                             _form_input("university_id", "الرقم الجامعي", "text"),
-                            _form_input("email", "البريد الإلكتروني", "email"),
+                            _form_input("email", "البريد الإلكتروني (@nilevalley.edu.sd)", "email"),
                             _form_input("password", "كلمة المرور", "password"),
-                            _form_input(
-                                "confirm_password", "تأكيد كلمة المرور", "password"
-                            ),
+                            _form_input("confirm_password", "تأكيد كلمة المرور", "password"),
                             class_name="space-y-4",
                         ),
                         rx.el.button(

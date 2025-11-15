@@ -10,9 +10,14 @@ class AuthState(rx.State):
     is_authenticated: bool = False
     current_user_role: Literal["student", "teacher", "supervisor", ""] = ""
     current_username: str = ""
+    user_semester: str = ""
     login_role: Literal["student", "teacher", "supervisor"] = "student"
     signup_type: Literal["student", "teacher"] = "student"
     form_data: dict = {}
+    
+    def _on_load(self):
+        """Auto-called when state is loaded. Restore from cookie."""
+        pass  # State persists automatically in Reflex
 
     @rx.event
     def handle_input(self, data: dict):
@@ -73,6 +78,10 @@ class AuthState(rx.State):
             self.current_user_role = user.role
             self.current_username = user.username
             
+            # Store semester if student
+            if user.role == "student" and user.semester:
+                self.user_semester = user.semester
+            
             yield rx.toast.success(f"Welcome back, {user.full_name or user.username}!")
             
             # Redirect based on role
@@ -89,6 +98,7 @@ class AuthState(rx.State):
         self.is_authenticated = False
         self.current_user_role = ""
         self.current_username = ""
+        self.user_semester = ""
         yield rx.toast.info("Logged out successfully")
         return rx.redirect("/login")
 
@@ -107,13 +117,14 @@ class AuthState(rx.State):
         confirm_password = form_data.get("confirm_password", "")
         full_name = form_data.get("full_name", "")
         university_id = form_data.get("university_id", "")
+        semester = form_data.get("semester", "")  # Get semester
         
         # Validation
-        if not username or not email or not password or not university_id:
+        if not username or not email or not password or not university_id or not semester:
             yield rx.toast.error("Please fill in all required fields")
             return
         
-        # NEW: Validate student number format (6 digits)
+        # Validate student number format (6 digits)
         if not university_id.isdigit() or len(university_id) != 6:
             yield rx.toast.error("رقم الطالب يجب أن يكون 6 أرقام")
             return
@@ -128,7 +139,7 @@ class AuthState(rx.State):
         
         # Create user in database
         with rx.session() as session:
-            # NEW: Check if student number is in whitelist
+            # Check if student number is in whitelist
             allowed = session.exec(
                 select(AllowedStudent).where(AllowedStudent.student_number == university_id)
             ).first()
@@ -159,19 +170,20 @@ class AuthState(rx.State):
                 yield rx.toast.error("Email already exists")
                 return
             
-            # Create new student user
+            # Create new student user WITH SEMESTER
             new_user = User(
                 username=username,
                 email=email,
                 password_hash=User.hash_password(password),
                 role="student",
                 full_name=full_name or None,
-                university_id=university_id or None
+                university_id=university_id or None,
+                semester=semester  # Save semester here
             )
             
             session.add(new_user)
             
-            # NEW: Mark student number as registered
+            # Mark student number as registered
             allowed.is_registered = True
             
             session.commit()
@@ -228,7 +240,8 @@ class AuthState(rx.State):
                 email=email,
                 password_hash=User.hash_password(password),
                 role="teacher",
-                full_name=full_name or None
+                full_name=full_name or None,
+                university_id=university_id or None
             )
             
             session.add(new_user)
